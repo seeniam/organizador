@@ -48,12 +48,12 @@ select throws_ok($$insert into public.items (kind, category, title) values ('tas
   '23514', null, 'título vazio falha');
 
 select lives_ok($$insert into public.push_subscriptions (endpoint, p256dh, auth)
-  values ('https://push.example/1', 'k', 'a')$$, 'A cria inscrição');
+  values ('https://fcm.googleapis.com/fcm/send/1', 'k', 'a')$$, 'A cria inscrição');
 
 reset role;
 
 select throws_ok($$insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
-  values ('00000000-0000-0000-0000-00000000000b', 'https://push.example/1', 'k', 'a')$$,
+  values ('00000000-0000-0000-0000-00000000000b', 'https://fcm.googleapis.com/fcm/send/1', 'k', 'a')$$,
   '23505', null, 'endpoint é único');
 
 -- Limites
@@ -65,10 +65,10 @@ select throws_ok($$insert into public.items (user_id, kind, category, title)
   'P0001', 'limite_itens', '2.001º item lança limite_itens');
 
 insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
-  select '00000000-0000-0000-0000-00000000000b', 'https://push.example/b' || g, 'k', 'a'
+  select '00000000-0000-0000-0000-00000000000b', 'https://fcm.googleapis.com/fcm/send/b' || g, 'k', 'a'
   from generate_series(1, 10) g;
 select throws_ok($$insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
-  values ('00000000-0000-0000-0000-00000000000b', 'https://push.example/b11', 'k', 'a')$$,
+  values ('00000000-0000-0000-0000-00000000000b', 'https://fcm.googleapis.com/fcm/send/b11', 'k', 'a')$$,
   'P0001', 'limite_dispositivos', '11ª inscrição lança limite_dispositivos');
 
 select * from finish();

@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider, onBeforeSignOut } from '@/auth/AuthProvider';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { clearPersistedCache, persister, PERSIST_MAX_AGE, queryClient } from '@/data/queryClient';
+import { unsubscribeDevice } from '@/lib/push';
 import Login from '@/pages/Login';
 import Privacy from '@/pages/Privacy';
 import { AppShell } from '@/ui/AppShell';
@@ -14,6 +15,8 @@ const Calendar = lazy(() => import('@/pages/Calendar'));
 const History = lazy(() => import('@/pages/History'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
+// Ao sair: cancela o push deste aparelho (para não receber lembretes de outra conta) e limpa o cache.
+onBeforeSignOut(unsubscribeDevice);
 onBeforeSignOut(clearPersistedCache);
 
 const fallback = (

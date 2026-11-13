@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { buildReminderPayload, sendToUser, type ReminderItem, type SubscriptionRow } from './push.ts';
+import { buildReminderPayload, isAllowedEndpoint, sendToUser, type ReminderItem, type SubscriptionRow } from './push.ts';
 
 const base: ReminderItem = {
   id: 'abc',
@@ -46,8 +46,8 @@ function fakeAdmin(subs: SubscriptionRow[]) {
 
 Deno.test('inscrição expirada (410) é apagada e as outras continuam recebendo', async () => {
   const subs: SubscriptionRow[] = [
-    { endpoint: 'https://push/velha', p256dh: 'a', auth: 'b' },
-    { endpoint: 'https://push/boa', p256dh: 'c', auth: 'd' },
+    { endpoint: 'https://fcm.googleapis.com/fcm/send/velha', p256dh: 'a', auth: 'b' },
+    { endpoint: 'https://fcm.googleapis.com/fcm/send/boa', p256dh: 'c', auth: 'd' },
   ];
   const { admin, deleted } = fakeAdmin(subs);
   const sentTo: string[] = [];
@@ -58,14 +58,42 @@ Deno.test('inscrição expirada (410) é apagada e as outras continuam recebendo
   };
   const r = await sendToUser(admin as never, 'u1', buildReminderPayload(base), send);
   assertEquals(r, { sent: 1, removed: 1 });
-  assertEquals(deleted, ['https://push/velha']);
-  assertEquals(sentTo, ['https://push/boa']);
+  assertEquals(deleted, ['https://fcm.googleapis.com/fcm/send/velha']);
+  assertEquals(sentTo, ['https://fcm.googleapis.com/fcm/send/boa']);
 });
 
 Deno.test('erro temporário (500) não apaga a inscrição', async () => {
-  const { admin, deleted } = fakeAdmin([{ endpoint: 'https://push/x', p256dh: 'a', auth: 'b' }]);
+  const { admin, deleted } = fakeAdmin([{ endpoint: 'https://fcm.googleapis.com/fcm/send/x', p256dh: 'a', auth: 'b' }]);
   const send = () => Promise.reject(Object.assign(new Error('boom'), { statusCode: 500 }));
   const r = await sendToUser(admin as never, 'u1', buildReminderPayload(base), send);
   assertEquals(r, { sent: 0, removed: 0 });
   assertEquals(deleted, []);
+});
+
+Deno.test('só aceita endpoints de serviços de push conhecidos', () => {
+  for (const ok of [
+    'https://fcm.googleapis.com/fcm/send/abc',
+    'https://updates.push.services.mozilla.com/wpush/v2/abc',
+    'https://wns2-par02p.notify.windows.com/w/?token=abc',
+    'https://web.push.apple.com/abc',
+  ]) assertEquals(isAllowedEndpoint(ok), true, ok);
+  for (const bad of [
+    'http://fcm.googleapis.com/fcm/send/abc',
+    'https://evil.example/fcm.googleapis.com',
+    'https://fcm.googleapis.com.evil.example/x',
+    'https://169.254.169.254/latest/meta-data',
+    'https://localhost:54321/rest/v1',
+    'nada',
+  ]) assertEquals(isAllowedEndpoint(bad), false, bad);
+});
+
+Deno.test('sendToUser ignora endpoints fora da lista', async () => {
+  const { admin } = fakeAdmin([{ endpoint: 'https://169.254.169.254/x', p256dh: 'a', auth: 'b' }]);
+  let called = false;
+  const r = await sendToUser(admin as never, 'u1', buildReminderPayload(base), () => {
+    called = true;
+    return Promise.resolve();
+  });
+  assertEquals(called, false);
+  assertEquals(r, { sent: 0, removed: 0 });
 });

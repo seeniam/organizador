@@ -57,15 +57,14 @@ export async function subscribeDevice(): Promise<'granted' | 'denied'> {
       applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
     }));
   const json = sub.toJSON();
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      endpoint: json.endpoint!,
-      p256dh: json.keys!.p256dh,
-      auth: json.keys!.auth,
-      user_agent: navigator.userAgent,
-    },
-    { onConflict: 'endpoint' },
-  );
+  // A função transfere o endpoint para o usuário atual, mesmo que outra conta
+  // tenha usado este navegador antes.
+  const { error } = await supabase.rpc('claim_push_subscription', {
+    p_endpoint: json.endpoint!,
+    p_p256dh: json.keys!.p256dh,
+    p_auth: json.keys!.auth,
+    p_user_agent: navigator.userAgent,
+  });
   if (error) throw error;
   return 'granted';
 }

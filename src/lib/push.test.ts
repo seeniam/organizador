@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const upsert = vi.fn().mockResolvedValue({ error: null });
-const del = vi.fn();
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn().mockResolvedValue({ error: null }) }));
+const { del } = vi.hoisted(() => ({ del: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    rpc,
     from: () => ({
-      upsert,
       delete: () => ({ eq: (...a: unknown[]) => (del(...a), Promise.resolve({ error: null })) }),
     }),
   },
@@ -27,7 +27,7 @@ function setEnv({ ua, standalone = false, push = true }: { ua: string; standalon
 }
 
 beforeEach(() => {
-  upsert.mockClear();
+  rpc.mockClear();
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -55,10 +55,10 @@ describe('subscribeDevice', () => {
     setEnv({ ua: ANDROID });
     (Notification.requestPermission as ReturnType<typeof vi.fn>).mockResolvedValue('denied');
     expect(await subscribeDevice()).toBe('denied');
-    expect(upsert).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('permissão concedida inscreve e grava com onConflict endpoint', async () => {
+  it('permissão concedida inscreve e reivindica o endpoint para o usuário atual', async () => {
     vi.stubEnv('VITE_VAPID_PUBLIC_KEY', 'BAAA');
     setEnv({ ua: ANDROID });
     (Notification.requestPermission as ReturnType<typeof vi.fn>).mockResolvedValue('granted');
@@ -71,10 +71,12 @@ describe('subscribeDevice', () => {
     });
     expect(await subscribeDevice()).toBe('granted');
     expect(subscribe).toHaveBeenCalledWith({ userVisibleOnly: true, applicationServerKey: expect.any(Uint8Array) });
-    expect(upsert).toHaveBeenCalledWith(
-      { endpoint: 'https://push.test/1', p256dh: 'P', auth: 'A', user_agent: ANDROID },
-      { onConflict: 'endpoint' },
-    );
+    expect(rpc).toHaveBeenCalledWith('claim_push_subscription', {
+      p_endpoint: 'https://push.test/1',
+      p_p256dh: 'P',
+      p_auth: 'A',
+      p_user_agent: ANDROID,
+    });
   });
 });
 

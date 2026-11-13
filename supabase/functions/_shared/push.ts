@@ -32,6 +32,21 @@ type AdminLike = { from(table: string): any };
 
 const CATEGORY_LABEL = { work: 'Profissional', leisure: 'Lazer' } as const;
 
+/** Serviços de push dos navegadores. Qualquer outro endereço é recusado (evita SSRF). */
+const PUSH_HOSTS = ['fcm.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com', 'push.apple.com'];
+
+export function isAllowedEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.port !== '') return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 function part(parts: Intl.DateTimeFormatPart[], type: string) {
   return parts.find((p) => p.type === type)?.value ?? '';
 }
@@ -87,7 +102,11 @@ export async function sendToUser(
   const body = JSON.stringify(payload);
   let sent = 0;
   let removed = 0;
-  for (const sub of data ?? []) {
+  for (const sub of (data ?? []) as SubscriptionRow[]) {
+    if (!isAllowedEndpoint(sub.endpoint)) {
+      console.error('endpoint de push recusado', sub.endpoint.slice(0, 60));
+      continue;
+    }
     try {
       await send(sub, body);
       sent++;
