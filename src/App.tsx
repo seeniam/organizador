@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider, onBeforeSignOut } from '@/auth/AuthProvider';
 import { RequireAuth } from '@/auth/RequireAuth';
+import { SessionEffects } from '@/auth/SessionEffects';
 import { clearPersistedCache, persister, PERSIST_MAX_AGE, queryClient } from '@/data/queryClient';
 import { unsubscribeDevice } from '@/lib/push';
 import Login from '@/pages/Login';
@@ -53,6 +54,7 @@ export default function App() {
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
       <AuthProvider>
+        <SessionEffects />
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>

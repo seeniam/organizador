@@ -67,7 +67,9 @@ create trigger items_enforce_limit before insert on public.items
 create function public.enforce_subscription_limit() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if (select count(*) from public.push_subscriptions where user_id = new.user_id) >= 10 then
+  -- Reativar um aparelho já cadastrado (mesmo endpoint) não conta como novo
+  if (select count(*) from public.push_subscriptions
+       where user_id = new.user_id and endpoint <> new.endpoint) >= 10 then
     raise exception 'limite_dispositivos';
   end if;
   return new;
@@ -102,10 +104,15 @@ create policy "push: dono altera" on public.push_subscriptions for update to aut
 create policy "push: dono exclui" on public.push_subscriptions for delete to authenticated
   using (user_id = (select auth.uid()));
 
+-- Permissões explícitas (não depende da exposição automática de tabelas)
+revoke all on public.items, public.push_subscriptions from anon;
+grant select, delete on public.items to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+grant all on public.items, public.push_subscriptions to service_role;
+
 -- Colunas controladas pelo servidor não podem ser escritas pelo cliente
 revoke insert, update on public.items from anon, authenticated;
 grant insert (kind, category, title, notes, starts_at, ends_at, all_day, timezone, reminder_minutes, done_at)
   on public.items to authenticated;
 grant update (kind, category, title, notes, starts_at, ends_at, all_day, timezone, reminder_minutes, done_at)
   on public.items to authenticated;
-revoke all on public.items, public.push_subscriptions from anon;

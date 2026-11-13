@@ -1,6 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { AUTH_STORAGE_KEY, supabase } from '@/lib/supabase';
 
 export interface AuthState {
   session: Session | null;
@@ -21,26 +21,41 @@ export function onBeforeSignOut(fn: SignOutHook): () => void {
   return () => beforeSignOut.delete(fn);
 }
 
+function storedSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    const s = raw ? (JSON.parse(raw) as Session) : null;
+    return s?.user?.id ? s : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (active) setSession(data.session);
-      })
+    const load = () =>
+      supabase.auth.getSession().then(({ data }) => {
+        // Offline com o token vencido, a renovação falha e a sessão vem nula.
+        // Nesse caso usamos a sessão guardada para mostrar os dados em cache.
+        if (active) setSession(data.session ?? (navigator.onLine ? null : storedSession()));
+      });
+    const onOnline = () => void load();
+    window.addEventListener('online', onOnline);
+    load()
       .finally(() => {
         if (active) setLoading(false);
       });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
+      setSession(s ?? (navigator.onLine ? null : storedSession()));
       setLoading(false);
     });
     return () => {
       active = false;
+      window.removeEventListener('online', onOnline);
       data.subscription.unsubscribe();
     };
   }, []);

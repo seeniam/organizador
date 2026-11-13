@@ -56,9 +56,15 @@ export async function subscribeDevice(): Promise<'granted' | 'denied'> {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
     }));
+  await claim(sub);
+  return 'granted';
+}
+
+/**
+ * Grava (ou transfere com prova de posse) a inscrição deste navegador para a conta atual.
+ */
+async function claim(sub: PushSubscription): Promise<void> {
   const json = sub.toJSON();
-  // A função transfere o endpoint para o usuário atual, mesmo que outra conta
-  // tenha usado este navegador antes.
   const { error } = await supabase.rpc('claim_push_subscription', {
     p_endpoint: json.endpoint!,
     p_p256dh: json.keys!.p256dh,
@@ -66,7 +72,18 @@ export async function subscribeDevice(): Promise<'granted' | 'denied'> {
     p_user_agent: navigator.userAgent,
   });
   if (error) throw error;
-  return 'granted';
+}
+
+/**
+ * Ao entrar no app: se o navegador já tem inscrição e permissão, garante que ela
+ * esteja registrada no servidor para a conta atual. Retorna se havia inscrição.
+ */
+export async function syncDeviceSubscription(): Promise<boolean> {
+  if (pushSupport() !== 'supported' || Notification.permission !== 'granted') return false;
+  const sub = await currentSubscription();
+  if (!sub) return false;
+  await claim(sub);
+  return true;
 }
 
 export async function unsubscribeDevice(): Promise<void> {

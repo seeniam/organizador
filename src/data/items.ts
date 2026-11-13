@@ -10,11 +10,27 @@ async function unwrap<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Pr
   return data as T;
 }
 
+const PAGE_SIZE = 1000;
+
+/** Busca todos os itens do usuário em páginas (a API devolve no máximo 1000 por vez). */
+export async function fetchAllItems(): Promise<Item[]> {
+  const all: Item[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const page = await unwrap<Item[]>(
+      supabase
+        .from('items')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1),
+    );
+    all.push(...page);
+    if (page.length < PAGE_SIZE) return all;
+  }
+}
+
 export function useItems() {
-  return useQuery({
-    queryKey: ITEMS_KEY,
-    queryFn: () => unwrap<Item[]>(supabase.from('items').select('*').order('starts_at', { nullsFirst: false })),
-  });
+  return useQuery({ queryKey: ITEMS_KEY, queryFn: fetchAllItems });
 }
 
 /** Aplica uma mudança otimista em ['items'] e devolve o rollback. */

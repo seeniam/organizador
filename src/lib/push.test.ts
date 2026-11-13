@@ -11,7 +11,7 @@ vi.mock('@/lib/supabase', () => ({
   },
 }));
 
-import { pushSupport, subscribeDevice, urlBase64ToUint8Array } from './push';
+import { pushSupport, subscribeDevice, syncDeviceSubscription, urlBase64ToUint8Array } from './push';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 Version/17.4 Mobile Safari/604.1';
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36';
@@ -83,5 +83,35 @@ describe('subscribeDevice', () => {
 describe('urlBase64ToUint8Array', () => {
   it('decodifica base64 url-safe', () => {
     expect(Array.from(urlBase64ToUint8Array('AQID_-8'))).toEqual([1, 2, 3, 255, 239]);
+  });
+});
+
+describe('syncDeviceSubscription', () => {
+  function withSubscription(sub: unknown) {
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => sub } }) },
+      configurable: true,
+    });
+  }
+
+  it('com permissão e inscrição no navegador, reivindica o endpoint para a conta atual', async () => {
+    setEnv({ ua: ANDROID });
+    (Notification as unknown as { permission: string }).permission = 'granted';
+    withSubscription({ toJSON: () => ({ endpoint: 'https://push.test/9', keys: { p256dh: 'P9', auth: 'A9' } }) });
+    expect(await syncDeviceSubscription()).toBe(true);
+    expect(rpc).toHaveBeenCalledWith('claim_push_subscription', {
+      p_endpoint: 'https://push.test/9',
+      p_p256dh: 'P9',
+      p_auth: 'A9',
+      p_user_agent: ANDROID,
+    });
+  });
+
+  it('sem inscrição no navegador não faz nada', async () => {
+    setEnv({ ua: ANDROID });
+    (Notification as unknown as { permission: string }).permission = 'granted';
+    withSubscription(null);
+    expect(await syncDeviceSubscription()).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

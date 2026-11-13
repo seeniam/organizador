@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'a@test.dev'),
@@ -70,6 +70,17 @@ insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
 select throws_ok($$insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
   values ('00000000-0000-0000-0000-00000000000b', 'https://fcm.googleapis.com/fcm/send/b11', 'k', 'a')$$,
   'P0001', 'limite_dispositivos', '11ª inscrição lança limite_dispositivos');
+
+select lives_ok($insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+  values ('00000000-0000-0000-0000-00000000000b', 'https://fcm.googleapis.com/fcm/send/b1', 'k2', 'a2')
+  on conflict (endpoint) do update set p256dh = excluded.p256dh$,
+  'com 10 aparelhos, reativar um já cadastrado não esbarra no limite');
+
+-- Permissões explícitas
+select ok(has_table_privilege('authenticated', 'public.items', 'SELECT'), 'authenticated lê items');
+select ok(has_table_privilege('authenticated', 'public.items', 'DELETE'), 'authenticated exclui items');
+select ok(not has_column_privilege('authenticated', 'public.items', 'remind_at', 'UPDATE'), 'authenticated não altera remind_at');
+select ok(has_table_privilege('service_role', 'public.push_subscriptions', 'SELECT'), 'service_role lê inscrições');
 
 select * from finish();
 rollback;

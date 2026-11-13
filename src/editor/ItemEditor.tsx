@@ -26,12 +26,13 @@ export function ItemEditor() {
   const itemId = params.get('item');
   const novo = params.get('novo') as ItemKind | null;
   const date = params.get('data') ?? '';
-  const { data: items, isPending } = useItems();
+  const { data: items, isPending, isFetching } = useItems();
   const close = useCloseEditor();
   const toast = useToast();
 
   const item = itemId ? items?.find((i) => i.id === itemId) : undefined;
-  const notFound = !!itemId && !isPending && !item;
+  // Com cache restaurado, a lista pode estar velha: só decide depois da busca terminar.
+  const notFound = !!itemId && !isPending && !isFetching && !item;
 
   useEffect(() => {
     if (notFound) {

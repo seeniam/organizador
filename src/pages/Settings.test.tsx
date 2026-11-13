@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   invoke: vi.fn(),
   unsubscribeDevice: vi.fn(),
   subscribeDevice: vi.fn(),
+  toastShow: vi.fn(),
   signOut: vi.fn(),
 }));
 vi.mock('@/lib/push', () => ({
@@ -20,7 +21,7 @@ vi.mock('@/lib/push', () => ({
   unsubscribeDevice: m.unsubscribeDevice,
 }));
 vi.mock('@/lib/supabase', () => ({ supabase: { functions: { invoke: m.invoke } } }));
-vi.mock('@/ui/Toast', () => ({ useToast: () => ({ show: vi.fn() }) }));
+vi.mock('@/ui/Toast', () => ({ useToast: () => ({ show: m.toastShow }) }));
 
 import Settings from './Settings';
 
@@ -105,5 +106,16 @@ describe('Configurações', () => {
     expect(m.invoke).toHaveBeenCalledWith('delete-account');
     await waitFor(() => expect(m.signOut).toHaveBeenCalled());
     expect(await screen.findByText('tela de login')).toBeInTheDocument();
+  });
+});
+
+describe('Configurações – teste sem destinatário', () => {
+  it('avisa quando nenhum aparelho recebeu o teste', async () => {
+    m.invoke.mockResolvedValue({ data: { sent: 0, removed: 1 }, error: null });
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Enviar notificação de teste' }));
+    expect(m.toastShow).toHaveBeenCalledWith(
+      'Nenhum aparelho recebeu o teste. Desative e ative os lembretes de novo.',
+    );
   });
 });

@@ -63,8 +63,11 @@ export default function Settings() {
 
   const test = () =>
     run(async () => {
-      const { error } = await supabase.functions.invoke('send-test-push');
-      toast.show(error ? 'Não foi possível enviar o teste.' : 'Notificação de teste enviada');
+      const { data, error } = await supabase.functions.invoke('send-test-push');
+      if (error) toast.show('Não foi possível enviar o teste.');
+      else if ((data as { sent?: number } | null)?.sent === 0)
+        toast.show('Nenhum aparelho recebeu o teste. Desative e ative os lembretes de novo.');
+      else toast.show('Notificação de teste enviada');
     });
 
   const logout = () =>

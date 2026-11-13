@@ -8,6 +8,7 @@ import type { Item } from '@/lib/types';
 const m = vi.hoisted(() => ({
   online: true,
   items: [] as Item[],
+  fetching: false,
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock('@/lib/dates', async (orig) => ({
   deviceTimeZone: () => 'America/Sao_Paulo',
 }));
 vi.mock('@/data/items', () => ({
-  useItems: () => ({ data: m.items, isPending: false }),
+  useItems: () => ({ data: m.items, isPending: false, isFetching: m.fetching }),
   useCreateItem: () => ({ mutate: m.create, isPending: false }),
   useUpdateItem: () => ({ mutate: m.update, isPending: false }),
   useDeleteItem: () => ({ mutate: m.remove }),
@@ -41,6 +42,7 @@ function renderAt(search: string) {
 beforeEach(() => {
   m.online = true;
   m.items = [];
+  m.fetching = false;
   m.create.mockReset();
   m.update.mockReset();
   m.remove.mockReset();
@@ -118,5 +120,13 @@ describe('ItemEditor', () => {
     renderAt('?item=nao-existe');
     expect(m.toast).toHaveBeenCalledWith('Item não encontrado');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('ItemEditor – cache desatualizado', () => {
+  it('não declara "não encontrado" enquanto a lista ainda está sendo buscada', () => {
+    m.fetching = true;
+    renderAt('?item=recem-criado');
+    expect(m.toast).not.toHaveBeenCalled();
   });
 });
