@@ -60,3 +60,18 @@ describe('ItemRow', () => {
     expect(screen.getByRole('checkbox', { name: 'Concluir X' })).toBeDisabled();
   });
 });
+
+describe('ItemRow – horário do compromisso', () => {
+  it('mostra o início na lateral e só o fim no detalhe', () => {
+    renderRow(
+      makeItem({
+        kind: 'event',
+        starts_at: new Date('2026-12-01T18:00:00-03:00').toISOString(),
+        ends_at: new Date('2026-12-01T19:30:00-03:00').toISOString(),
+      }),
+    );
+    expect(screen.getByText('18:00')).toBeInTheDocument();
+    expect(screen.getByText('até 19:30')).toBeInTheDocument();
+    expect(screen.queryByText('18:00–19:30')).toBeNull();
+  });
+});

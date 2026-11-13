@@ -16,6 +16,15 @@ begin
     raise exception 'not_authenticated' using errcode = '42501';
   end if;
 
+  -- Só transfere com prova de posse: as chaves precisam ser as do mesmo navegador.
+  if exists (
+    select 1 from public.push_subscriptions
+     where endpoint = p_endpoint and user_id <> uid
+       and (p256dh <> p_p256dh or auth <> p_auth)
+  ) then
+    raise exception 'endpoint_em_uso' using errcode = '42501';
+  end if;
+
   delete from public.push_subscriptions
    where endpoint = p_endpoint and user_id <> uid;
 

@@ -27,7 +27,7 @@ export default function Today({ now: nowProp, tz: tzProp }: { now?: Date; tz?: s
   return (
     <>
       <header className="mb-8">
-        <p className="text-muted capitalize">{weekday}</p>
+        <p className="text-muted first-letter:uppercase">{weekday}</p>
         <h1 className="font-display text-5xl leading-none font-semibold tracking-tight md:text-6xl">{date}</h1>
         {dayItems.length > 0 && (
           <div className="mt-5 max-w-md">

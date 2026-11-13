@@ -136,7 +136,11 @@ export function ItemRow({ item, now, tz, onToggle, onDelete, showDate }: Props) 
           <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
             {overdue && <span className="font-bold text-danger">Atrasada</span>}
             {showDate && <span>{showDate}</span>}
-            {time && (isTask || item.ends_at || item.all_day) && <span className="tabular-nums">{time}</span>}
+            {isTask && time && <span className="tabular-nums">{time}</span>}
+            {!isTask && item.all_day && <span>Dia inteiro</span>}
+            {!isTask && !item.all_day && item.ends_at && (
+              <span className="tabular-nums">até {time.split('–')[1]}</span>
+            )}
             <span className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className={clsx('h-2 w-2 rounded-full', stripe)} />
               {CATEGORY_LABEL[item.category]}
