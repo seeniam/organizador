@@ -10,7 +10,7 @@ export interface AuthState {
   signOut(): Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+export const AuthContext = createContext<AuthState | null>(null);
 
 type SignOutHook = () => Promise<void> | void;
 const beforeSignOut = new Set<SignOutHook>();
