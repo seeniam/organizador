@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { ItemEditor } from '@/editor/ItemEditor';
 import { useOnline } from '@/lib/online';
 import { Fab } from './Fab';
@@ -10,6 +10,8 @@ export function AppShell() {
   const online = useOnline();
   const { pathname } = useLocation();
   const isSettings = pathname.startsWith('/configuracoes');
+  const [params] = useSearchParams();
+  const fabDate = pathname === '/calendario' ? (params.get('dia') ?? undefined) : undefined;
 
   return (
     <ToastProvider>
@@ -31,7 +33,7 @@ export function AppShell() {
           </main>
         </div>
         <BottomNav />
-        {!isSettings && <Fab />}
+        {!isSettings && <Fab date={fabDate} />}
         <ItemEditor />
       </div>
     </ToastProvider>
